@@ -30,13 +30,13 @@ try {
 
     const notificationOptions = {
       body: body,
-      icon: 'https://github.com/sistemas-luiz/PontoWeb/blob/main/Icone.png?raw=true',
-      badge: 'https://github.com/sistemas-luiz/PontoWeb/blob/main/Logo.png?raw=true',
+      icon: 'https://github.com/sistemas-luiz/pontoaurora/blob/main/Icone.png?raw=true',
+      badge: 'https://github.com/sistemas-luiz/pontoaurora/blob/main/Logo.png?raw=true',
       vibrate: [500, 200, 500, 200, 500],
       requireInteraction: true,
       tag: 'ponto-notification',
       data: {
-        url: 'https://sistemas-luiz.github.io/PontoWeb/' 
+        url: 'https://sistemas-luiz.github.io/pontoaurora/' 
       }
     };
 
