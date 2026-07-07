@@ -10,17 +10,17 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://github.com/sistemas-luiz/PontoWeb/blob/main/Icone.png?raw=true",
+      "src": "https://github.com/sistemas-luiz/pontoaurora/blob/main/Icone.png?raw=true",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://github.com/sistemas-luiz/PontoWeb/blob/main/Icone.png?raw=true",
+      "src": "https://github.com/sistemas-luiz/pontoaurora/blob/main/Icone.png?raw=true",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "https://github.com/sistemas-luiz/PontoWeb/blob/main/Logo.png?raw=true",
+      "src": "https://github.com/sistemas-luiz/pontoaurora/blob/main/Logo.png?raw=true",
       "sizes": "512x512",
       "type": "image/png"
     }
