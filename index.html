@@ -228,9 +228,13 @@
         };
 
         const formatDuration = (totalMinutes) => {
-          const h = Math.floor(totalMinutes / 60);
-          const m = totalMinutes % 60;
-          return `${h}h${m.toString().padStart(2, '0')}`;
+          if (totalMinutes === undefined || totalMinutes === null || isNaN(totalMinutes)) return '0h00';
+          const rounded = Math.round(totalMinutes);
+          const absMins = Math.abs(rounded);
+          const h = Math.floor(absMins / 60);
+          const m = absMins % 60;
+          const sign = rounded < 0 ? '-' : '';
+          return `${sign}${h}h${m.toString().padStart(2, '0')}`;
         };
 
         useEffect(() => { const t=setInterval(()=>setCurrentTime(new Date()),1000); return ()=>clearInterval(t); }, []);
