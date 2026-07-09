@@ -162,7 +162,6 @@
         
         const [punchType, setPunchType] = useState(null);
         const [result, setResult] = useState(null);
-        const [inputUrl, setInputUrl] = useState('');
         const [currentTime, setCurrentTime] = useState(new Date()); 
         
         const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -170,6 +169,44 @@
         const videoRef = useRef(null);
         
         const [localNotifConfig, setLocalNotifConfig] = useState({ entrada: '', saida: '', antecedencia: 10 });
+
+        const calculateHoursWorkedToday = () => {
+          if (!entryTime) return 0;
+          const entList = String(entryTime).split(' / ');
+          const saiList = exitTime ? String(exitTime).split(' / ') : [];
+          
+          let totalMins = 0;
+          for (let i = 0; i < entList.length; i++) {
+            const ent = entList[i];
+            const sai = saiList[i];
+            
+            if (ent && ent.includes(':')) {
+              const [eh, em] = ent.split(':').map(Number);
+              const entMins = eh * 60 + em;
+              
+              if (sai && sai.includes(':')) {
+                const [sh, sm] = sai.split(':').map(Number);
+                const saiMins = sh * 60 + sm;
+                totalMins += (saiMins - entMins);
+              } else {
+                // Turno ativo neste momento, calcula a diferença dinâmica até o relógio atual
+                const nowH = currentTime.getHours();
+                const nowM = currentTime.getMinutes();
+                const nowMins = nowH * 60 + nowM;
+                if (nowMins > entMins) {
+                  totalMins += (nowMins - entMins);
+                }
+              }
+            }
+          }
+          return totalMins;
+        };
+
+        const formatDuration = (totalMinutes) => {
+          const h = Math.floor(totalMinutes / 60);
+          const m = totalMinutes % 60;
+          return `${h}h${m.toString().padStart(2, '0')}`;
+        };
 
         useEffect(() => { const t=setInterval(()=>setCurrentTime(new Date()),1000); return ()=>clearInterval(t); }, []);
         
@@ -287,8 +324,16 @@
                setResult(res); setStatus('success'); 
                const c=JSON.parse(localStorage.getItem(CACHE_KEY_DATA)||'{}'); 
                c.lastAction=punchType;
-               if(punchType==='Entrada') c.entryTime=res.timestamp.split(' ')[1].substring(0,5);
-               if(punchType==='Saida') c.exitTime=res.timestamp.split(' ')[1].substring(0,5);
+               
+               const newTime = res.timestamp.split(' ')[1].substring(0,5);
+               if(punchType==='Entrada' || punchType==='Intervalo-Fim') {
+                   if (c.entryTime && !c.entryTime.includes(newTime)) c.entryTime += ' / ' + newTime;
+                   else if (!c.entryTime) c.entryTime = newTime;
+               }
+               if(punchType==='Saida' || punchType==='Intervalo-Inicio') {
+                   if (c.exitTime && !c.exitTime.includes(newTime)) c.exitTime += ' / ' + newTime;
+                   else if (!c.exitTime) c.exitTime = newTime;
+               }
                c.nome = bolsistaName;
                localStorage.setItem(CACHE_KEY_DATA,JSON.stringify(c)); 
                applyUserData(c);
@@ -305,7 +350,18 @@
         );
         if(status==='error-offline') return <div className="h-screen flex items-center justify-center flex-col gap-4 bg-white text-center p-6"><h2 className="text-xl font-bold text-red-600">Sem Conexão</h2><p className="text-gray-500">Ligue-se à internet para carregar os seus dados.</p><button onClick={()=>window.location.reload()} className="bg-gray-100 px-6 py-2 rounded-lg font-bold">Tentar Novamente</button></div>;
         
-        if(status==='success') return <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white fade-in"><div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600"><Icon.Check/></div><h2 className="text-2xl font-bold text-gray-800">Registado!</h2><p className="text-gray-500 text-lg">{result.timestamp}</p><button onClick={resetState} className="mt-8 bg-gray-100 text-gray-700 px-8 py-3 rounded-full font-bold scale-click">Voltar</button></div>;
+        if(status==='success') return (
+          <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white p-6 text-center fade-in">
+             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600"><Icon.Check/></div>
+             <h2 className="text-2xl font-bold text-gray-800">Registado!</h2>
+             <p className="text-gray-500 text-lg font-mono">{result.timestamp}</p>
+             <div className="w-full max-w-xs bg-green-50 border border-green-100 p-4 rounded-2xl my-4">
+                <p className="text-xs text-green-600 font-bold uppercase tracking-wider">Total de Horas Hoje</p>
+                <p className="text-3xl font-mono font-bold text-green-800 mt-1">{formatDuration(calculateHoursWorkedToday())}</p>
+             </div>
+             <button onClick={resetState} className="mt-4 bg-gray-100 text-gray-700 px-8 py-3 rounded-full font-bold scale-click">Voltar</button>
+          </div>
+        );
         
         if(status==='punching') return (
           <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 slide-up">
@@ -350,8 +406,14 @@
               </div>
               <div className="text-sm font-medium opacity-90 mb-4">{currentTime.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
 
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-700/40 rounded-full text-xs font-medium backdrop-blur-sm">
-                 <Icon.Map className="w-3 h-3"/> {location ? 'Localização Ativa' : 'A procurar GPS...'}
+              {}
+              <div className="flex flex-col gap-2 items-center">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-700/40 rounded-full text-xs font-medium backdrop-blur-sm">
+                   <Icon.Map className="w-3 h-3"/> {location ? 'Localização Ativa' : 'A procurar GPS...'}
+                </div>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-800/60 rounded-full text-xs font-semibold backdrop-blur-sm">
+                   <Icon.Clock className="w-3.5 h-3.5 text-green-300"/> Horas feitas hoje: <span className="font-mono text-white font-bold ml-1">{formatDuration(calculateHoursWorkedToday())}</span>
+                </div>
               </div>
             </div>
 
