@@ -153,6 +153,8 @@
         
         // Estados para a escala de hoje capturada dinamicamente do servidor
         const [entradaToday, setEntradaToday] = useState(cachedData?.entradaToday || null);
+        const [intInicioToday, setIntInicioToday] = useState(cachedData?.intInicioToday || null);
+        const [intFimToday, setIntFimToday] = useState(cachedData?.intFimToday || null);
         const [saidaToday, setSaidaToday] = useState(cachedData?.saidaToday || null);
         
         const [location, setLocation] = useState(null);
@@ -265,7 +267,7 @@
 
         const applyUserData = (data) => {
            setBolsistaName(data.nome||''); setEntryTime(data.entryTime||null); setExitTime(data.exitTime||null); setLastAction(data.lastAction||null);
-           setEntradaToday(data.entradaToday||null); setSaidaToday(data.saidaToday||null);
+           setEntradaToday(data.entradaToday||null); setIntInicioToday(data.intInicioToday||null); setIntFimToday(data.intFimToday||null); setSaidaToday(data.saidaToday||null);
         };
 
         const initGPS = () => { if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p=>setLocation(p.coords),()=>console.warn('GPS pendente'),{enableHighAccuracy:true}); };
@@ -362,8 +364,8 @@
                 
                 {/* Visualização de Escala de Trabalho do Dia Ativo */}
                 {entradaToday && saidaToday && (
-                  <div className="mt-2 inline-block bg-green-50 border border-green-100 px-3 py-1 rounded-full text-green-700 text-xs font-bold">
-                     Horário de Hoje: {entradaToday} às {saidaToday}
+                  <div className="mt-2 inline-block bg-green-50 border border-green-100 px-3 py-1.5 rounded-full text-green-700 text-xs font-bold leading-normal">
+                     Horário de Hoje: {entradaToday} às {saidaToday} {intInicioToday && intFimToday && `(Intervalo: ${intInicioToday} às ${intFimToday})`}
                   </div>
                 )}
                 
