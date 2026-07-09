@@ -9,26 +9,18 @@
     <!-- DETEÇÃO DE DISPOSITIVO E REDIRECIONAMENTO DE SEGURANÇA -->
     <script>
       (function() {
-        // 1. Deteção por User Agent clássico
         const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
-        // 2. Deteção de iPads modernos com iPadOS (que fingem ser MacOS)
         const isIPadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        
-        // 3. Deteção baseada em toque + tamanho físico do ecrã
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         const isSmallScreen = window.innerWidth <= 1024;
-        
         const isMobile = isMobileUA || isIPadOS || (isTouchDevice && isSmallScreen);
 
-        // Se for um dispositivo móvel a aceder à versão de PC, redireciona imediatamente para a versão mobile
         if (isMobile) {
           window.location.replace("index.html" + window.location.search);
         }
       })();
     </script>
     
-    <!-- PWA Setup (Corrigido para manifest_pc.json para garantir a instalação correta no PC) -->
     <link rel="manifest" href="manifest_pc.json">
     <meta name="theme-color" content="#166534">
     <link rel="apple-touch-icon" href="https://github.com/sistemas-luiz/pontoaurora/blob/main/Icone.png?raw=true">
@@ -39,10 +31,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- ENCRIPTAÇÃO (AES) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-
+    
     <!-- Firebase (App + Messaging) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
@@ -53,21 +43,13 @@
       @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       .spinner { border: 4px solid #e5e7eb; width: 36px; height: 36px; border-radius: 50%; border-left-color: #16a34a; animation: spin 1s linear infinite; }
       @keyframes spin { 100% { transform: rotate(360deg); } }
-
-      /* Ocultar barra de rolamento mas manter funcionalidade */
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
   </head>
   <body>
     <div id="root"></div>
 
-    <!-- SHIM E INICIALIZAÇÃO DO FIREBASE -->
     <script>
       const API_URL = "https://script.google.com/macros/s/AKfycby3AyDbEbz212PWpPy9Jih5yEDEMoIKIU2QJD0_gnFEC_m7NAnsw5T4uXE228v_sgUs/exec";
       const VAPID_KEY = 'BH6SQVZylnLjOXl3ZLM3YjC4-pPUpDIHrUYjksCex06uFTxe5lCOn4AIT5hlKQxv7x9p7BIgJKKgqrp-cb7-HpY';
@@ -121,17 +103,27 @@
         navigator.serviceWorker.register('./sw.js').catch(err => console.warn("ServiceWorker ignorado/erro:", err));
       }
     </script>
-
     <!-- LÓGICA DA APLICAÇÃO REACT -->
     <script type="text/babel">
       const { useState, useEffect, useRef } = React;
       
-      // CHAVES DE ARMAZENAMENTO LOCAL
       const STORAGE_PUBLIC = 'pontoweb_public_info'; 
       const STORAGE_SECURE = 'pontoweb_encrypted_blob'; 
       const CACHE_KEY_DATA = 'pontoweb_user_data_cache';
 
-      // --- COMPONENTE DE ÍCONE SEGURO (LUCIDE) ---
+      const formatTimeFrontend = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string' && val.includes('T')) {
+           try {
+              const parts = val.split('T')[1].split(':');
+              return `${parts[0]}:${parts[1]}`;
+           } catch(e) {
+              return val;
+           }
+        }
+        return val;
+      };
+
       const LucideIcon = ({ name, size = 18, className = "" }) => {
         const ref = useRef(null);
         useEffect(() => {
@@ -146,11 +138,10 @@
         return <span ref={ref} dangerouslySetInnerHTML={{ __html: `<i data-lucide="${name}" width="${size}" height="${size}"></i>` }} style={{ display: 'inline-flex', alignItems: 'center' }} />;
       };
 
-      // --- COMPONENTE MODAL GLOBAL ---
       const Modal = ({ config, onClose }) => {
         if (!config.isOpen) return null;
         return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] fade-in">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] fade-in">
             <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center border border-gray-100 relative transform transition-all scale-100">
                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${config.type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                   <LucideIcon name={config.type === 'error' ? 'triangle-alert' : 'info'} size={32} />
@@ -170,9 +161,8 @@
         );
       };
 
-      // --- MODAL DE CONFIGURAÇÃO DE NOTIFICAÇÕES ---
       const NotificationModal = ({ isOpen, onClose, initialConfig, onSave }) => {
-        const [config, setConfig] = useState(initialConfig || { entrada: '', saida: '', antecedencia: 10 });
+        const [config, setConfig] = useState(initialConfig || { antecedencia: 10 });
         const [permission, setPermission] = useState(Notification.permission);
         const [loading, setLoading] = useState(false);
 
@@ -217,17 +207,6 @@
                       {permission !== 'granted' && <button onClick={requestPerm} className="ml-auto text-xs underline">Ativar</button>}
                    </div>
 
-                   <div className="grid grid-cols-2 gap-3">
-                      <div>
-                         <label className="text-xs font-bold text-gray-400 uppercase">Entrada</label>
-                         <input type="time" value={config.entrada} onChange={e => setConfig({...config, entrada: e.target.value})} className="w-full border p-2 rounded-lg font-bold text-gray-700 text-center" />
-                      </div>
-                      <div>
-                         <label className="text-xs font-bold text-gray-400 uppercase">Saída</label>
-                         <input type="time" value={config.saida} onChange={e => setConfig({...config, saida: e.target.value})} className="w-full border p-2 rounded-lg font-bold text-gray-700 text-center" />
-                      </div>
-                   </div>
-
                    <div>
                       <label className="text-xs font-bold text-gray-400 uppercase">Avisar com Antecedência</label>
                       <select value={config.antecedencia} onChange={e => setConfig({...config, antecedencia: e.target.value})} className="w-full border p-2 rounded-lg bg-white text-gray-700 font-bold">
@@ -248,7 +227,6 @@
       };
 
       function DesktopApp() {
-        // --- ESTADOS ---
         const [publicInfo, setPublicInfo] = useState(() => JSON.parse(localStorage.getItem(STORAGE_PUBLIC) || 'null'));
         const [cachedData] = useState(() => JSON.parse(localStorage.getItem(CACHE_KEY_DATA) || 'null'));
         
@@ -259,11 +237,17 @@
         const [lastAction, setLastAction] = useState(cachedData?.lastAction || null);
         const [entryTime, setEntryTime] = useState(cachedData?.entryTime || null);
         const [exitTime, setExitTime] = useState(cachedData?.exitTime || null);
+        
+        // Horários capturados dinamicamente do servidor
+        const [entradaToday, setEntradaToday] = useState(cachedData?.entradaToday || null);
+        const [intInicioToday, setIntInicioToday] = useState(cachedData?.intInicioToday || null);
+        const [intFimToday, setIntFimToday] = useState(cachedData?.intFimToday || null);
+        const [saidaToday, setSaidaToday] = useState(cachedData?.saidaToday || null);
+
         const [location, setLocation] = useState(null);
         const [appStatus, setAppStatus] = useState('ready');
         
-        // Notificações
-        const [notifConfig, setNotifConfig] = useState(cachedData?.config || { entrada: '', saida: '', antecedencia: 10 });
+        const [notifConfig, setNotifConfig] = useState(cachedData?.config || { antecedencia: 10 });
         const [showNotifModal, setShowNotifModal] = useState(false);
 
         const [inputUrl, setInputUrl] = useState('');
@@ -276,15 +260,51 @@
         const [currentTime, setCurrentTime] = useState(new Date());
         const videoRef = useRef(null);
 
-        // --- MODAL STATES ---
         const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', type: 'info', isConfirm: false });
         const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
-        const showAlert = (title, message, type = 'info') => setModalConfig({ isOpen: true, title, message, type, isConfirm: false, confirmText: 'Compreendi' });
+        const showAlert = (title, message, type = 'info') => setModalConfig({ isOpen: true, title, message, type, isConfirm: false, confirmText: 'Entendi' });
         const showConfirm = (title, message, onConfirm, type = 'info', confirmText = 'Confirmar') => setModalConfig({ isOpen: true, title, message, type, isConfirm: true, onConfirm, confirmText });
+
+        const calculateHoursWorkedToday = () => {
+          if (!entryTime) return 0;
+          const entList = String(entryTime).split(' / ');
+          const saiList = exitTime ? String(exitTime).split(' / ') : [];
+          
+          let totalMins = 0;
+          for (let i = 0; i < entList.length; i++) {
+            const ent = entList[i];
+            const sai = saiList[i];
+            
+            if (ent && ent.includes(':')) {
+              const [eh, em] = ent.split(':').map(Number);
+              const entMins = eh * 60 + em;
+              
+              if (sai && sai.includes(':')) {
+                const [sh, sm] = sai.split(':').map(Number);
+                const saiMins = sh * 60 + sm;
+                totalMins += (saiMins - entMins);
+              } else {
+                // Shift em aberto neste momento, adiciona minutos dinamicamente em tempo de execução
+                const nowH = currentTime.getHours();
+                const nowM = currentTime.getMinutes();
+                const nowMins = nowH * 60 + nowM;
+                if (nowMins > entMins) {
+                  totalMins += (nowMins - entMins);
+                }
+              }
+            }
+          }
+          return totalMins;
+        };
+
+        const formatDuration = (totalMinutes) => {
+          const h = Math.floor(totalMinutes / 60);
+          const m = totalMinutes % 60;
+          return `${h}h${m.toString().padStart(2, '0')}`;
+        };
 
         useEffect(() => { const t=setInterval(()=>setCurrentTime(new Date()),1000); return ()=>clearInterval(t); }, []);
 
-        // --- MONITORIZAÇÃO DE GPS (WatchPosition) ---
         useEffect(() => {
           let watchId;
           if (sessionUser && appStatus === 'ready') {
@@ -294,7 +314,7 @@
                       setLocation(position.coords);
                    },
                    (error) => {
-                      console.warn("Erro GPS:", error);
+                      console.warn("GPS Indisponível temporariamente:", error);
                    },
                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
                 );
@@ -317,7 +337,6 @@
           }
         }, []);
 
-        // --- AUTENTICAÇÃO ---
         const handleFirstAccess = (id, token) => {
            setView('loading_init');
            google.script.run.withSuccessHandler(res => {
@@ -336,7 +355,7 @@
                  
                  setView('new_password'); 
               }
-           }).withFailureHandler(() => { showAlert("Erro", "Falha na ligação.", "error"); setView('login_link'); }).getBolsistaInfo(id, token);
+           }).withFailureHandler(() => { showAlert("Erro de Ligação", "Não foi possível estabelecer contacto com o servidor.", "error"); setView('login_link'); }).getBolsistaInfo(id, token);
         };
 
         const confirmPasswordCopy = () => {
@@ -345,19 +364,17 @@
               const encrypted = CryptoJS.AES.encrypt(JSON.stringify(tempCredentials), generatedPass).toString();
               localStorage.setItem(STORAGE_SECURE, encrypted);
               setSessionUser(tempCredentials);
-              
               loadAppData(tempCredentials.id, tempCredentials.token);
-              
               setTempCredentials(null);
               setGeneratedPass(''); 
               setView('app');
-           } catch(e) { showAlert("Erro", "A encriptação falhou.", "error"); }
+           } catch(e) { showAlert("Falha de Encriptação", "Houve um problema ao cifrar as suas credenciais locais.", "error"); }
         };
 
         const handlePasswordLogin = (e) => {
            e.preventDefault();
            const encryptedBlob = localStorage.getItem(STORAGE_SECURE);
-           if (!encryptedBlob) { showAlert("Erro", "Dados locais perdidos.", "error"); return setView('login_link'); }
+           if (!encryptedBlob) { showAlert("Erro de Segurança", "Os seus dados locais foram removidos.", "error"); return setView('login_link'); }
            try {
               const bytes = CryptoJS.AES.decrypt(encryptedBlob, inputPass);
               const data = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
@@ -368,11 +385,11 @@
                  loadAppData(data.id, data.token);
                  setInputPass(''); 
               } else throw new Error();
-           } catch (err) { showAlert("Erro", "Palavra-passe incorreta.", "error"); setInputPass(''); }
+           } catch (err) { showAlert("Acesso Negado", "Palavra-passe incorreta. Tente novamente.", "error"); setInputPass(''); }
         };
 
         const logout = () => {
-           showConfirm("Sair?", "Isto removerá a conta deste computador.", () => {
+           showConfirm("Sair da Conta?", "Ao terminar sessão, as suas chaves seguras serão apagadas deste computador.", () => {
               localStorage.removeItem(STORAGE_PUBLIC);
               localStorage.removeItem(STORAGE_SECURE);
               localStorage.removeItem(CACHE_KEY_DATA);
@@ -380,7 +397,7 @@
               setSessionUser(null);
               setInputPass('');
               setView('login_link');
-           }, "error", "Sair");
+           }, "error", "Terminar Sessão");
         };
 
         const handleManualLinkSubmit = (e) => {
@@ -391,17 +408,20 @@
                 const p=new URLSearchParams(u.search);
                 const id=p.get('id'), token=p.get('token');
                 if(id && token) handleFirstAccess(id, token); 
-                else showAlert("Erro", "Link incompleto.", "error");
-             } else showAlert("Erro", "Link inválido.", "error");
-           } catch(err) { showAlert("Erro", "Link inválido.", "error"); }
+                else showAlert("Erro de Link", "O link de configuração inserido parece estar incompleto.", "error");
+             } else showAlert("Formato Inválido", "Certifique-se de colar o link de acesso completo recebido.", "error");
+           } catch(err) { showAlert("Link Inválido", "Verifique o endereço e cole novamente.", "error"); }
         };
 
-        // --- DADOS DA APLICAÇÃO ---
         const loadAppData = (id, token) => {
            google.script.run.withSuccessHandler(res => {
              if (!res.error) {
                 localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(res));
                 setEntryTime(res.entryTime||null); setExitTime(res.exitTime||null); setLastAction(res.lastAction||null);
+                setEntradaToday(formatTimeFrontend(res.entradaToday)||null); 
+                setIntInicioToday(formatTimeFrontend(res.intInicioToday)||null); 
+                setIntFimToday(formatTimeFrontend(res.intFimToday)||null); 
+                setSaidaToday(formatTimeFrontend(res.saidaToday)||null);
                 if (res.config) setNotifConfig(res.config);
              }
            }).getBolsistaInfo(id, token);
@@ -414,9 +434,9 @@
            }
            await ExternalBridge.request('salvarConfiguracao', { 
               id: sessionUser.id, token: sessionUser.token, 
-              entrada: newConfig.entrada, saida: newConfig.saida, antecedencia: newConfig.antecedencia 
+              antecedencia: newConfig.antecedencia 
            });
-           showAlert("Sucesso", "Configurações de alerta gravadas e sincronizadas!", "info");
+           showAlert("Configuração Gravada", "Os seus alertas foram guardados com êxito.", "info");
         };
 
         const startCamera = async (type) => {
@@ -425,7 +445,7 @@
           try {
             const s = await navigator.mediaDevices.getUserMedia({video: true});
             if(videoRef.current) videoRef.current.srcObject = s;
-          } catch(e) { showAlert("Erro", "Webcam bloqueada.", "error"); setAppStatus('ready'); }
+          } catch(e) { showAlert("Câmara Bloqueada", "Por favor, autorize o acesso à webcam nas definições do navegador.", "error"); setAppStatus('ready'); }
         };
 
         const confirmPunch = () => {
@@ -441,30 +461,46 @@
                c.lastAction=punchType;
                
                const newTime = res.timestamp.split(' ')[1].substring(0,5);
-               if(punchType==='Entrada') {
+               if(punchType==='Entrada' || punchType==='Intervalo-Fim') {
                    if (c.entryTime && !c.entryTime.includes(newTime)) c.entryTime += ' / ' + newTime;
                    else if (!c.entryTime) c.entryTime = newTime;
                }
-               if(punchType==='Saida') {
+               if(punchType==='Saida' || punchType==='Intervalo-Inicio') {
                    if (c.exitTime && !c.exitTime.includes(newTime)) c.exitTime += ' / ' + newTime;
                    else if (!c.exitTime) c.exitTime = newTime;
                }
 
                localStorage.setItem(CACHE_KEY_DATA,JSON.stringify(c)); 
                setEntryTime(c.entryTime); setExitTime(c.exitTime); setLastAction(punchType);
-             } else { showAlert("Erro", res.msg, "error"); setAppStatus('ready'); } 
-          }).withFailureHandler(() => { showAlert("Erro", "Falha na ligação.", "error"); setAppStatus('ready'); }).registrarPonto({ pessoaId: sessionUser.id, token: sessionUser.token, tipo: punchType, lat: location?.latitude, lng: location?.longitude, prec: location?.accuracy, fotoBase64: foto });
+             } else { showAlert("Falha de Registo", res.msg || "Erro desconhecido.", "error"); setAppStatus('ready'); } 
+          }).withFailureHandler(() => { showAlert("Erro de Rede", "Lamentamos, mas não foi possível enviar a sua marcação de ponto. Tente novamente.", "error"); setAppStatus('ready'); }).registrarPonto({ pessoaId: sessionUser.id, token: sessionUser.token, tipo: punchType, lat: location?.latitude, lng: location?.longitude, prec: location?.accuracy, fotoBase64: foto });
         };
 
-        if (view === 'loading_init') return <div className="h-screen w-full flex items-center justify-center"><div className="spinner"></div></div>;
+        if (view === 'loading_init') return <div className="h-screen w-full flex items-center justify-center bg-slate-50"><div className="spinner"></div></div>;
 
-        if (view === 'login_link') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center p-4 bg-gray-50"> <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-lg text-center fade-in border border-gray-100 relative"> <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600"><LucideIcon name="map" size={32}/></div> <h1 className="text-2xl font-bold mb-2 text-gray-800">Primeiro Acesso</h1> <p className="text-gray-500 mb-8 text-sm">Cole o seu link de acesso pessoal para configurar.</p> <form onSubmit={handleManualLinkSubmit} className="flex gap-2"> <input value={inputUrl} onChange={e=>setInputUrl(e.target.value)} placeholder="Cole o link aqui..." className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-green-500 transition-colors"/> <button className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg">Configurar</button> </form> </div> </div> </> );
+        if (view === 'login_link') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center p-4 bg-gray-50"> <div className="bg-white p-10 rounded-2xl shadow-xl w-full max-w-lg text-center fade-in border border-gray-100 relative"> <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600"><LucideIcon name="map" size={32}/></div> <h1 className="text-2xl font-bold mb-2 text-gray-800">Primeiro Acesso</h1> <p className="text-gray-500 mb-8 text-sm">Cole o seu link de acesso pessoal para configure.</p> <form onSubmit={handleManualLinkSubmit} className="flex gap-2"> <input value={inputUrl} onChange={e=>setInputUrl(e.target.value)} placeholder="Cole o link aqui..." className="flex-1 p-3 border border-gray-300 rounded-lg outline-none focus:border-green-500 transition-colors"/> <button className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition-colors shadow-lg">Configurar</button> </form> </div> </div> </> );
         
-        if (view === 'new_password') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center p-4 bg-green-600/10 backdrop-blur-sm"> <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center fade-in border-2 border-green-500 relative"> <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><LucideIcon name="lock" size={32}/></div> <h2 className="text-2xl font-bold text-gray-800">Palavra-passe Segura Criada!</h2> <p className="text-gray-500 text-sm mb-6 mt-2">Guarde esta palavra-passe. Ela é a única chave para aceder aos seus dados neste PC.</p> <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 mb-6 flex items-center justify-between group cursor-pointer" onClick={() => navigator.clipboard.writeText(generatedPass)}> <span className="font-mono text-xl font-bold text-gray-800 tracking-wider w-full text-center">{generatedPass}</span> <span className="text-gray-400 group-hover:text-green-600"><LucideIcon name="copy"/></span> </div> <button onClick={confirmPasswordCopy} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg"> Copiei a palavra-passe, pode encriptar </button> </div> </div> </> );
+        if (view === 'new_password') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center p-4 bg-green-600/10 backdrop-blur-sm"> <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center fade-in border-2 border-green-500 relative"> <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600"><LucideIcon name="lock" size={32}/></div> <h2 className="text-2xl font-bold text-gray-800">Palavra-passe Segura Criada!</h2> <p className="text-gray-500 text-sm mb-6 mt-2">Guarde esta palavra-passe. Ela é a única chave para aceder aos seus dados neste PC de forma local e segura.</p> <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 mb-6 flex items-center justify-between group cursor-pointer" onClick={() => { navigator.clipboard.writeText(generatedPass); showAlert("Copiado!", "Palavra-passe copiada para a área de transferência.", "success"); }}> <span className="font-mono text-xl font-bold text-gray-800 tracking-wider w-full text-center">{generatedPass}</span> <span className="text-gray-400 group-hover:text-green-600"><LucideIcon name="copy"/></span> </div> <button onClick={confirmPasswordCopy} className="w-full bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg"> Copiei a palavra-passe, pode encriptar </button> </div> </div> </> );
 
         if (view === 'login_password') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center p-4 bg-gray-50"> <div className="bg-white p-12 rounded-3xl shadow-xl w-full max-w-md text-center fade-in border border-gray-100"> <div className="mb-6 relative inline-block"> <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400 border-4 border-white shadow-sm"><LucideIcon name="user" size={40}/></div> <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 rounded-full border-4 border-white"></div> </div> <h1 className="text-2xl font-bold text-gray-800 mb-1">Olá, {publicInfo?.nome?.split(' ')[0]}</h1> <p className="text-gray-400 text-xs mb-8 uppercase tracking-wider">Acesso Seguro (Encriptado)</p> <form onSubmit={handlePasswordLogin}> <div className="relative mb-6"> <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><LucideIcon name="lock" size={20}/></div> <input type="password" value={inputPass} onChange={e => setInputPass(e.target.value)} className="w-full pl-10 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 outline-none font-bold text-gray-700" placeholder="Introduza a sua palavra-passe" autoFocus /> </div> <button className="w-full bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg active:scale-95">Desbloquear</button> </form> <button onClick={logout} className="mt-8 text-xs text-gray-400 hover:text-red-500 hover:underline transition-colors"> Não é você? Ou esqueceu-se da palavra-passe? </button> </div> </div> </> );
 
-        if(appStatus==='success') return ( <> <Modal config={modalConfig} onClose={closeModal} /> <div className="h-screen w-full flex items-center justify-center bg-green-50/50"> <div className="bg-white p-12 rounded-3xl shadow-xl text-center fade-in max-w-md w-full border border-gray-100"> <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600"><LucideIcon name="check" size={48}/></div> <h2 className="text-3xl font-bold text-gray-800 mb-2">Ponto Registado!</h2> <p className="text-gray-500 text-xl font-mono mb-8">{result?.timestamp}</p> <button onClick={() => {setResult(null); setAppStatus('ready');}} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-black transition-colors shadow-lg">Voltar ao Início</button> </div> </div> </> );
+        if(appStatus==='success') return ( 
+          <> 
+             <Modal config={modalConfig} onClose={closeModal} /> 
+             <div className="h-screen w-full flex items-center justify-center bg-green-50/50"> 
+                <div className="bg-white p-12 rounded-3xl shadow-xl text-center fade-in max-w-md w-full border border-gray-100"> 
+                   <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600"><LucideIcon name="check" size={48}/></div> 
+                   <h2 className="text-3xl font-bold text-gray-800 mb-2">Ponto Registado!</h2> 
+                   <p className="text-gray-500 text-xl font-mono mb-6">{result?.timestamp}</p> 
+                   <div className="bg-green-50 border border-green-100 p-4 rounded-2xl mb-8">
+                      <p className="text-xs text-green-600 font-bold uppercase tracking-wider">Total Acumulado Hoje</p>
+                      <p className="text-3xl font-mono font-bold text-green-800 mt-1">{formatDuration(calculateHoursWorkedToday())}</p>
+                   </div>
+                   <button onClick={() => {setResult(null); setAppStatus('ready');}} className="w-full bg-gray-800 text-white py-4 rounded-xl font-bold hover:bg-black transition-colors shadow-lg">Voltar ao Início</button> 
+                </div> 
+             </div> 
+          </> 
+        );
 
         if(appStatus==='sending') return (
            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex flex-col items-center justify-center fade-in">
@@ -477,10 +513,11 @@
         const isWorking = lastAction === 'Entrada' || lastAction === 'Intervalo-Fim';
         const onInterval = lastAction === 'Intervalo-Inicio';
 
-        const isEntryDisabled = isWorking || onInterval || !location;
-        const isExitDisabled = !isWorking || onInterval || !location;
-        const isIntStartDisabled = !isWorking || onInterval || !location;
-        const isIntEndDisabled = !onInterval || !location;
+        const isMainActionBlocked = !location;
+        const isEntryDisabled = isWorking || onInterval || isMainActionBlocked;
+        const isExitDisabled = !isWorking || onInterval || isMainActionBlocked;
+        const isIntStartDisabled = !isWorking || onInterval || isMainActionBlocked;
+        const isIntEndDisabled = !onInterval || isMainActionBlocked;
 
         const getTimes = (str) => str ? str.split(' / ') : [];
         const entList = getTimes(entryTime);
@@ -508,9 +545,14 @@
                    <div className="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-gray-100 mb-6 relative overflow-y-auto max-h-[40vh] no-scrollbar">
                       <div className="flex items-center gap-3 mb-4 border-b border-gray-50 pb-4">
                           <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0"><LucideIcon name="user" size={20}/></div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                               <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Bolsista</p>
                               <h2 className="text-base font-bold text-gray-800 leading-tight break-words">{bolsistaName}</h2>
+                              {entradaToday && saidaToday && (
+                                <p className="text-[10px] text-green-600 font-bold mt-1 bg-green-50 px-2 py-0.5 rounded border border-green-100 inline-block leading-relaxed">
+                                  Hoje: {entradaToday} às {saidaToday} {intInicioToday && intFimToday && `(Int: ${intInicioToday}-${intFimToday})`}
+                                </p>
+                              )}
                           </div>
                       </div>
                       
@@ -544,7 +586,7 @@
                       
                       <div className="text-xs text-gray-400 flex items-center gap-2 px-2 pt-2 justify-center">
                          <LucideIcon name={location ? "map-pin" : "loader"} size={12} className={!location ? "animate-spin" : ""}/> 
-                         {location ? 'GPS Ativo' : 'A procurar Localização...'}
+                         {location ? 'GPS Ativo' : 'A buscar Localização...'}
                       </div>
                       
                       <button onClick={() => { setSessionUser(null); setInputPass(''); setView('login_password'); }} className="w-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
@@ -568,6 +610,12 @@
                              <span className="text-3xl text-gray-300 ml-1 font-normal">{currentTime.getSeconds().toString().padStart(2,'0')}</span>
                         </p>
                         <img src="https://github.com/sistemas-luiz/pontoaurora/blob/main/Logo.png?raw=true" className="w-24 h-24 object-contain drop-shadow-sm -mt-6 ml-12" />
+                      </div>
+                      
+                      {}
+                      <div className="mt-4 flex items-center gap-2 bg-slate-100/70 border border-slate-200/50 rounded-xl px-4 py-2 w-fit">
+                         <LucideIcon name="clock" size={16} className="text-slate-500" />
+                         <span className="text-sm text-slate-600 font-semibold">Horas trabalhadas hoje: <strong className="text-slate-800 font-mono font-bold text-base ml-1">{formatDuration(calculateHoursWorkedToday())}</strong></span>
                       </div>
                    </div>
 
